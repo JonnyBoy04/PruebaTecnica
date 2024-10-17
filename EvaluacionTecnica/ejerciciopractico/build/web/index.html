@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+
+    <head>
+        <meta charset="UTF-8">
+        <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+        <link href="styles/icon_material_design_4495/css/materialdesignicons.min.css" rel="stylesheet">
+        <link href="javascript/VueJs/vuetify/vuetify.min.css" rel="stylesheet">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Inicio de Sesi&oacute;n</title>
+        <link rel="shortcut icon" href="assets/logo.png" />
+        <style>
+            html {
+                overflow-y: hidden !important;
+            }
+
+            .msj-error {
+                position: absolute !important;
+                bottom: 65px;
+            }
+
+            .lux-col1 {
+                /* background-image: url('resource/img/zonagif.gif'); */
+                background-image: url('assets/bg.jpg');
+
+                background-position-x: left;
+                position: relative;
+            }
+
+            .lux-col2 {
+                position: relative;
+            }
+
+            .bg-perfil {
+                background: #F6CE3C;
+                /* fallback for old browsers */
+                background: -webkit-linear-gradient(to right, #F6CE3C, #FFB600);
+                /* Chrome 10-25, Safari 5.1-6 */
+                background: linear-gradient(to right, #F6CE3C, #FFB600);
+                /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
+
+            }
+        </style>
+    </head>
+
+    <body>
+        <div id="app">
+            <v-app>
+                <v-content>
+                    <v-container class="fill-height" fluid>
+                        <v-row align="center" justify="center">
+                            <v-col cols="12" sm="8" md="8">
+                                <v-card class="elevation-12">
+                                    <v-window v-model="step">
+                                        <v-window-item :value="1">
+                                            <v-row>
+                                                <v-col cols="12" md="8">
+                                                    <v-card-text class="mt-12">
+                                                        <h1 class="text-center display-2" style="color: #007BFF;">Inicio de
+                                                            Sesi&oacute;n</h1>
+                                                        <v-form>
+                                                            <v-text-field v-model="usuario" label="Correo" required
+                                                                          @keydown.enter="fnLogin"></v-text-field>
+                                                            <v-text-field v-model="contrasenia" type="password"
+                                                                          label="Contraseña" required @keydown.enter="fnLogin">
+                                                            </v-text-field>
+                                                        </v-form>
+                                                    </v-card-text>
+                                                    <div class="text-center mt-3">
+                                                        <br>
+                                                        <v-btn text color="primary" @click="fnLogin" dark>Iniciar
+                                                            sesi&oacute;n</v-btn>
+                                                        <br>
+                                                    </div>
+                                                </v-col>
+                                                <v-col cols="12" md="4" style="background-color: #007BFF;">
+                                                    <v-card-text class="white--text mt-12">
+                                                        <v-img src="./assets/logo.png" />
+                                                    </v-card-text>
+                                                </v-col>
+                                            </v-row>
+                                        </v-window-item>
+                                    </v-window>
+                                </v-card>
+                            </v-col>
+                        </v-row>
+                    </v-container>
+                </v-content>
+                <v-overlay :value="loader" z-index="1000">
+                    <v-img aspect-ratio="2" class="white--text align-end" height="212px" width="292px"
+                           src="./assets/loading.gif"> </v-img>
+                </v-overlay>
+                <v-snackbar v-model="snackbar" top="top" :bottom="true" :multi-line="true" :color="color_mensaje">
+                    <span v-html="mensaje_alerta"></span>
+                    <v-icon color="white" @click="snackbar=false">mdi-close-circle</v-icon>
+                </v-snackbar>
+            </v-app>
+        </div>
+        <script src="javascript/axios/axios.js"></script>
+        <script src="javascript/VueJs/vue/vue.js"></script>
+        <script src="javascript/VueJs/vue/vue-composition-api.prod.js"></script>
+        <script src="javascript/VueJs/vuetify/vuetify.min.js"></script>
+
+
+
+        <script>
+            /* global axios, Vue, VueCompositionAPI */
+            const ca = window.VueCompositionAPI;
+
+            Vue.use(ca.default);
+            const vm = new Vue({
+                el: "#app",
+                vuetify: new Vuetify(),
+                setup() {
+                    let obj = this;
+                    //Composition components
+
+                    const {ref, onMounted, watch} = VueCompositionAPI;
+                    const ctr = "api/log/in";
+                    const step = ref(1);
+                    const contrasenia = ref('');
+                    const usuario = ref('');
+                    const show = ref(false);
+                    const loading = ref(false);
+                    const passwordShow = ref(false);
+                    //SNACKBAR
+                    const loader = ref(false);
+                    const snackbar = ref(false);
+                    const mensaje_alerta = ref('');
+                    const color_mensaje = ref('');
+                    const dialog = ref(false);
+                    //LifeCicle vue
+                    onMounted(() => {
+                        //fnLogin();
+                    });
+                    async function fnLogin() {
+                        try {
+                            if (usuario.value != "" && contrasenia.value != "") {
+                                loader.value = true;
+                                //Peticion ajax al controlador y envio de parametros
+                                datos = JSON.stringify({correo: usuario.value, contrasenia: contrasenia.value});
+                                let parametros = new URLSearchParams({datos: datos});
+                                let {data, status} = await axios.post(ctr, parametros);
+                                if (data.excepcion != null) {
+                                    color_mensaje.value = 'warning';
+                                    mensaje_alerta.value = 'Error interno de servidor. Intente nuevamente más tarde.';
+                                    snackbar.value = true;
+                                    return;
+                                }
+                                if (data.error != null) {
+                                    color_mensaje.value = 'warning';
+                                    mensaje_alerta.value = data.error + '';
+                                    snackbar.value = true;
+                                    return;
+                                } else {
+                                    localStorage.setItem('currentUser', JSON.stringify(data));
+                                    window.location.href = "modulos/menu.html";
+                                }
+                            } else {
+                                color_mensaje.value = 'warning';
+                                mensaje_alerta.value = 'Capture usuario y contraseña';
+                                snackbar.value = true;
+                            }
+                        } catch (error) {
+                            console.log(error);
+                        } finally {
+                            loader.value = false;
+                        }
+
+                    }
+
+                    async function fnConsultarPorFiltro() {
+                        try {
+                            loader.value = true;
+                            let parametros = new URLSearchParams({"filtro": buscarLibro.value});
+                            let {data, status} = await axios.post("api/libro/obtenerDerecho", parametros);
+                            if (status == 200) {
+                                if (data.length > 0) {
+                                    arrayLibros.value = data;
+                                    verLibro.value = arrayLibros.value[0].libro;
+                                    dialog.value = true;
+                                } else {
+                                    color_mensaje.value = 'warning';
+                                    mensaje_alerta.value = 'Libro no encontrado o ligado a derechos de autor';
+                                    snackbar.value = true;
+                                    return;
+                                }
+                            }
+                        } catch (error) {
+                            console.error(error);
+                        } finally {
+                            loader.value = false;
+                        }
+                    }
+
+                    return {
+                        dialog,
+                        loader,
+                        snackbar,
+                        mensaje_alerta,
+                        color_mensaje,
+                        usuario,
+                        contrasenia,
+                        show,
+                        loading,
+                        fnLogin,
+                        fnConsultarPorFiltro,
+                        passwordShow,
+                        step
+                    };
+                }
+            });
+        </script>
+
+    </body>
+
+</html>

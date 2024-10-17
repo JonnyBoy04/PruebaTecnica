@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet" />
+        <link href="../styles/icon_material_design_4495/css/materialdesignicons.min.css" rel="stylesheet" />
+        <link href="../javascript/VueJs/sweetalert2/sweetalert2.css" />
+        <link href="../javascript/VueJs/vuetify/vuetify.min.css" rel="stylesheet" />
+        <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
+        <meta name="viewport"
+              content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui" />
+        <script src="../javascript/VueJs/vue/vue.js"></script>
+        <script type="" src="../javascript/VueJs/vue/vue-composition-api.prod.js"></script>
+    </head>
+    <style>
+        body {
+            font-family: "Roboto";
+        }
+
+        .direccion {
+            width: 100%;
+        }
+
+
+        .th,
+        .td {
+            border: 1px solid black;
+            padding: 10px;
+        }
+
+        .th {
+            background-color: #41da9f;
+        }
+
+        .tituloTh {
+            font-weight: bold;
+            margin-left: 39px;
+            margin-right: 39px;
+            text-align: center;
+        }
+
+        #tabla {
+            border-collapse: collapse;
+            margin: auto;
+        }
+
+        .align-center {
+            align-items: center;
+        }
+
+        .fixed-width {
+            width: 80px;
+        }
+    </style>
+
+    <body>
+        <div id="app">
+            <v-app>
+                <v-container fluid>
+                    <v-card>
+                        <v-card-title style="background-color: #007BFF; color:#ffffff;">
+                            Historial De Productos
+                        </v-card-title>
+                        <v-container fluid>
+                            <v-row justify="center" dense>
+                                <v-col md="6">
+                                    <v-autocomplete v-model="tipoMovimiento" outlined label="Tipo de Movimiento" :items="arrayTipos" @change='filtarTabla()'>
+                                    </v-autocomplete>
+                                </v-col>
+                            </v-row>
+                            <v-row justify="center">
+                                <v-col md="12">
+                                    <v-data-table :headers="headerCapacitacion" :items="dataProductos"
+                                                  class="elevation-2" no-data-text="No se encontro ningun registro"
+                                                  :hide-default-header="dataProductos.length < 1"
+                                                  :hide-default-footer="dataProductos.length < 1" locale="es-ES"
+                                                  :mobile-breakpoint="NaN" items-per-page="5">
+                                        <template v-slot:item.editar="{item}">
+                                            <v-btn fab small color="warning" @click="flagEditar = true; itemEditar = item; fnSeleccionar(item)"><v-icon>mdi-square-edit-outline</v-icon></v-btn>
+                                        </template>
+                                        <template v-slot:item.eliminar="{item}">
+                                            <v-btn fab small color="error" @click="fnCambiarEstatus(item);"><v-icon>mdi-delete-circle</v-icon></v-btn>
+                                        </template>
+                                        <template v-slot:item.estatus="{ item }">
+                                            <v-avatar size="32" :color="item.estatus ? 'green' : 'red'">
+                                                <span v-if="item.estatus" class="mdi mdi-check"></span>
+                                                <span v-else class="mdi mdi-close"></span>
+                                            </v-avatar>
+                                        </template>
+                                        <template v-slot:item.eliminar="{ item }">
+                                            <!-- Utilizamos v-if para condicionar la visibilidad del botón de eliminar -->
+                                            <v-btn v-if="item.estatus" fab small color="error" @click="fnCambiarEstatus(item);">
+                                                <v-icon>mdi-delete-circle</v-icon>
+                                            </v-btn>
+                                        </template>
+                                    </v-data-table>
+                                </v-col>
+                            </v-row>
+                        </v-container>
+                    </v-card>
+                </v-container>
+                <template>
+                    <div class="text-center">
+                        <v-dialog v-model="dialog" width="1100" persistent>
+                            <v-card>
+
+                                <v-card-actions>
+                                    <v-spacer></v-spacer>
+                                    <v-btn color="primary" text @click="dialog = false;">
+                                        Cerrar
+                                    </v-btn>
+                                </v-card-actions>
+                            </v-card>
+                        </v-dialog>
+                    </div>
+                </template>
+                <!-- TODO: ALERTAS DE SISTEMA-->
+                <v-snackbar v-model=" snackbar" top="top" :bottom="true" :multi-line="true" :color="color_snackbar">
+                    {{ mensaje_snackbar }}
+                    <v-icon color="white" @click="snackbar = false">mdi-close-circle</v-icon>
+                </v-snackbar>
+                <v-overlay :value="loader" z-index="1000">
+                    <v-img aspect-ratio="2" class="white--text align-end" height="212px" width="292px"
+                           src="../images/Logo_utl_animado.gif">
+                    </v-img>
+                </v-overlay>
+            </v-app>
+        </div>
+    </body>
+    <script src="../javascript/axios/axios.js"></script>
+    <script src="../javascript/VueJs/vuetify/vuetify.min.js"></script>
+    <script src="../javascript/VueJs/vee-validate/vee-validate.js"></script>
+    <script src="../javascript/VueJs/vee-validate/es.js"></script>
+    <script src="../javascript/VueJs/sweetalert2/sweetalert2.all.js"></script>
+
+    <script type="module">
+import {
+preloader,
+        guardar,
+        errorGuardar,
+        actualizar,
+        errorActualizar,
+        eliminar,
+        errorEliminar,
+        cerrar,
+        confirmarE,
+        aviso,
+        confirmar,
+} from "../javascript/mensajeSistema/mensajes_sweetalert_vue.js";
+Vue.use(VeeValidate, {
+    classes: true,
+});
+
+//Lenguaje de VeeValidate
+VeeValidate.Validator.localize("es");
+
+new Vue({
+    el: "#app",
+    vuetify: new Vuetify(),
+    setup() {
+        const {ref, onMounted, watch} = VueCompositionAPI;
+        const ctr =
+                "../api/movimiento/";
+        //Variables POST
+        const tipoMovimiento = ref("");
+
+        //Otras variables
+        const flagEditar = ref(false);
+        const itemEditar = ref({});
+
+
+        //SNACKBAR
+        const loader = ref(false);
+        const snackbar = ref(false);
+        const mensaje_snackbar = ref("");
+        const color_snackbar = ref("");
+        //Loaders
+        //Dialogs
+        const dialog = ref(false);
+        //DataTable
+        const dataProductos = ref([]);
+        const arrayData = ref([]);
+        const headerCapacitacion = ref([
+            {text: "Producto", align: "left", sortable: true, value: "producto.nombreProducto"},
+            {text: "Tipo Movimiento", align: "left", sortable: true, value: "tipoMovimiento"},
+            {text: "Empleado", align: "center", sortable: false, value: "usuario.nombre"},
+            {text: "Fecha Movimiento", align: "center", sortable: false, value: "fechaMovimiento"}
+        ]);
+
+        const arrayTipos = ['Todos', 'Entrada', 'Salida'];
+
+        onMounted(() => {
+            fnConsultarTabla();
+        });
+
+        async function fnConsultarTabla() {
+            try {
+                preloader("../");
+                let {data, status} = await axios.get(ctr + "getAll");
+                if (status == 200) {
+                    if (data.length > 0) {
+                        dataProductos.value = data;
+                        arrayData.value = data;
+                    }
+                }
+            } catch (error) {
+                mostrarSnackbar("error");
+                console.error(error);
+            } finally {
+                swal.close();
+            }
+        }
+        
+        function filtarTabla(){
+            const arrayFiltrado = arrayData.value.filter(movimiento => movimiento.tipoMovimiento === tipoMovimiento.value);
+            dataProductos.value = tipoMovimiento.value === 'Todos' ? arrayData.value : arrayFiltrado;
+        }
+
+
+        function mostrarSnackbar(color, texto) {
+            snackbar.value = true;
+            color_snackbar.value = color;
+            if (color == "error")
+                mensaje_snackbar.value =
+                        "Ocurrió un error. Intentalo de nuevo más tarde.";
+            else
+                mensaje_snackbar.value = texto;
+        }
+
+        return {
+            dialog,
+            color_snackbar,
+            snackbar,
+            mensaje_snackbar,
+            loader,
+            tipoMovimiento,
+            arrayTipos,
+            mostrarSnackbar,
+            flagEditar,
+            headerCapacitacion,
+            fnConsultarTabla,
+            dataProductos,
+            itemEditar,
+            filtarTabla,
+        };
+    }
+});
+
+Vue.config.devtools = true;
+    </script>
+
+</html>

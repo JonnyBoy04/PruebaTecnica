@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet" />
+        <link href="../styles/icon_material_design_4495/css/materialdesignicons.min.css" rel="stylesheet" />
+        <link href="../javascript/VueJs/sweetalert2/sweetalert2.css" />
+        <link href="../javascript/VueJs/vuetify/vuetify.min.css" rel="stylesheet" />
+        <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
+        <meta name="viewport"
+              content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui" />
+        <script src="../javascript/VueJs/vue/vue.js"></script>
+        <script type="" src="../javascript/VueJs/vue/vue-composition-api.prod.js"></script>
+        <title>Solicitud De registro de capacitacíon interna</title>
+    </head>
+    <style>
+        body {
+            font-family: "Roboto";
+        }
+
+        .direccion {
+            width: 100%;
+        }
+
+
+        .th,
+        .td {
+            border: 1px solid black;
+            padding: 10px;
+        }
+
+        .th {
+            background-color: #41da9f;
+        }
+
+        .tituloTh {
+            font-weight: bold;
+            margin-left: 39px;
+            margin-right: 39px;
+            text-align: center;
+        }
+
+        #tabla {
+            border-collapse: collapse;
+            margin: auto;
+        }
+
+        .align-center {
+            align-items: center;
+        }
+
+        .fixed-width {
+            width: 80px;
+        }
+    </style>
+
+    <body>
+        <div id="app">
+            <v-app>
+                <v-container fluid>
+                    <v-card>
+                        <v-card-title style="background-color: #007BFF; color:#ffffff;">
+                            Entrada De Productos
+                        </v-card-title>
+                        <v-container fluid>
+                            <v-row justify="center" dense>
+                                <v-col md="6">
+                                    <v-text-field v-model="nombreProducto" outlined label="Nombre del Producto"
+                                                  persistent-hint v-validate="'required|max:100'"
+                                                  data-vv-name="nombre del producto" :error="errors.has('nombre del producto')"
+                                                  :error-messages="errors.first('nombre del producto')" :readonly="flagEditar"></v-text-field>
+                                </v-col>
+                                <v-col md="6">
+                                    <v-text-field v-model="descripcionProducto" outlined label="Descripción del Producto"
+                                                  persistent-hint v-validate="'required|max:100'"
+                                                  data-vv-name="descripcion del producto" :error="errors.has('descripcion del producto')"
+                                                  :error-messages="errors.first('descripcion del producto')" :readonly="flagEditar"></v-text-field>
+                                </v-col>
+                                <v-col md="6" v-if="flagEditar">
+                                    <v-text-field v-model="cantidadProducto" outlined label="Cantidad del Producto"
+                                                  persistent-hint v-validate="'required|numeric'"
+                                                  data-vv-name="cantidad del producto" :error="errors.has('cantidad del producto')"
+                                                  :error-messages="errors.first('cantidad del producto')"></v-text-field>
+                                </v-col>
+                            </v-row>
+                            <v-row justfy="center" dense> </v-row>
+                            <v-row justify="center">
+                                <v-btn color="primary"
+                                       @click="flagEditar ? fnEditarCantidad() : fnGuardar()"><v-icon>mdi-content-save</v-icon>{{flagEditar
+                                        ? 'Editar' : 'Guardar'}}</v-btn>
+                                &nbsp;
+                                <v-btn color="error"
+                                       @click="fnLimpiarCampos()"><v-icon>mdi-cancel</v-icon>Cancelar</v-btn>
+                            </v-row>
+                            <v-row justify="center">
+                                <v-col md="12">
+                                    <v-data-table :headers="headerCapacitacion" :items="dataProducto"
+                                                  class="elevation-2" no-data-text="No se encontro ningun registro"
+                                                  :hide-default-header="dataProducto.length < 1"
+                                                  :hide-default-footer="dataProducto.length < 1" locale="es-ES"
+                                                  :mobile-breakpoint="NaN" items-per-page="5">
+                                        <template v-slot:item.editar="{item}">
+                                            <v-btn fab small color="warning" @click="flagEditar = true; itemEditar = item; fnSeleccionar(item)"><v-icon>mdi-square-edit-outline</v-icon></v-btn>
+                                        </template>
+                                        <template v-slot:item.eliminar="{item}">
+                                            <v-btn fab small color="error" @click="fnCambiarEstatus(item);"><v-icon>mdi-delete-circle</v-icon></v-btn>
+                                        </template>
+                                        <template plate v-slot:item.estatus="{ item }">
+                                            <v-tooltip bottom>
+                                                <template v-slot:activator="{ on }">
+                                                    <v-switch v-model="item.estatus" v-on="on"
+                                                              @change="fnCambiarEstatus(item)"></v-switch>
+                                                </template>
+                                                <span v-if="item.estatus">Desactivar</span>
+                                                <span v-else>Activar</span>
+                                            </v-tooltip>
+                                        </template>                                        
+                                    </v-data-table>
+                                </v-col>
+                            </v-row>
+                        </v-container>
+                    </v-card>
+                </v-container>
+                <template>
+                    <div class="text-center">
+                        <v-dialog v-model="dialog" width="1100" persistent>
+                            <v-card>
+
+                                <v-card-actions>
+                                    <v-spacer></v-spacer>
+                                    <v-btn color="primary" text @click="dialog = false;">
+                                        Cerrar
+                                    </v-btn>
+                                </v-card-actions>
+                            </v-card>
+                        </v-dialog>
+                    </div>
+                </template>
+                <!-- TODO: ALERTAS DE SISTEMA-->
+                <v-snackbar v-model=" snackbar" top="top" :bottom="true" :multi-line="true" :color="color_snackbar">
+                    {{ mensaje_snackbar }}
+                    <v-icon color="white" @click="snackbar = false">mdi-close-circle</v-icon>
+                </v-snackbar>
+                <v-overlay :value="loader" z-index="1000">
+                    <v-img aspect-ratio="2" class="white--text align-end" height="212px" width="292px"
+                           src="../images/Logo_utl_animado.gif">
+                    </v-img>
+                </v-overlay>
+            </v-app>
+        </div>
+    </body>
+    <script src="../javascript/axios/axios.js"></script>
+    <script src="../javascript/VueJs/vuetify/vuetify.min.js"></script>
+    <script src="../javascript/VueJs/vee-validate/vee-validate.js"></script>
+    <script src="../javascript/VueJs/vee-validate/es.js"></script>
+    <script src="../javascript/VueJs/sweetalert2/sweetalert2.all.js"></script>
+
+    <script type="module">
+import {
+preloader,
+        guardar,
+        errorGuardar,
+        actualizar,
+        errorActualizar,
+        eliminar,
+        errorEliminar,
+        cerrar,
+        confirmarE,
+        aviso,
+        confirmar,
+        } from "../javascript/mensajeSistema/mensajes_sweetalert_vue.js";
+Vue.use(VeeValidate, {
+    classes: true,
+});
+
+//Lenguaje de VeeValidate
+VeeValidate.Validator.localize("es");
+
+new Vue({
+    el: "#app",
+    vuetify: new Vuetify(),
+    setup() {
+        const {ref, onMounted, watch} = VueCompositionAPI;
+        const ctr = "../api/producto/";
+        //Variables POST
+        const nombreProducto = ref("");
+        const descripcionProducto = ref("");
+        const cantidadProducto = ref(0);
+
+        //Otras variables
+        const flagEditar = ref(false);
+        const itemEditar = ref({});
+
+        let currentUser = localStorage.getItem('currentUser');
+        let user = JSON.parse(currentUser);
+        let rol = user.rol.nombreRol;
+
+
+        //SNACKBAR
+        const loader = ref(false);
+        const snackbar = ref(false);
+        const mensaje_snackbar = ref("");
+        const color_snackbar = ref("");
+        //Loaders
+        //Dialogs
+        const dialog = ref(false);
+        //DataTable
+        const dataProducto = ref([]);
+        const headerCapacitacion = ref([
+            {text: "Nombre del Producto", align: "left", sortable: true, value: "nombreProducto"},
+            {text: "Descripoción", align: "left", sortable: true, value: "descripcion"},
+            {text: "Cantidad en Inventario", align: "left", sortable: true, value: "cantidadInventario"},
+            {text: "Fecha Alta", align: "left", sortable: true, value: "fechaAlta"},
+            {text: "Estatus", align: "center", sortable: false, value: "estatus"},
+            {text: "Editar cantidad", align: "center", sortable: false, value: "editar"}
+        ]);
+
+        const searchCapacitacion = ref([]);
+
+        onMounted(() => {
+            fnConsultarTabla();
+            console.log(rol);
+        });
+
+        async function fnConsultarTabla() {
+            try {
+                preloader("../");
+                let {data, status} = await axios.get(ctr + "getAll");
+                if (status == 200) {
+                    if (data.length > 0) {
+                        dataProducto.value = data;
+                    }
+                }
+            } catch (error) {
+                mostrarSnackbar("error");
+                console.error(error);
+            } finally {
+                swal.close();
+            }
+        }
+
+        async function fnCambiarEstatus(item) {
+            try {
+                preloader("../");
+                let datos = {idProducto: item.idProducto, estatus: item.estatus === true ? 1 : 0};
+                let datosU = {
+                    idUsuario: user.idUsuario,
+                    rol: {
+                        idRol: user.rol.idRol,
+                        nombreRol: rol
+                    }
+                };
+                let parametros = new URLSearchParams({datosProductos: JSON.stringify(datos), datosUsuario: JSON.stringify(datosU)});
+                let {data, status} = await axios.post(ctr + "delete", parametros);
+                if (status == 200) {
+                    console.log(data.error);
+                    if (data.exception != null) {
+                        mostrarSnackbar(
+                                "success",
+                                "Registro actualizado correctamente."
+                                );
+                        fnConsultarTabla();
+                        return;
+                    }
+                    if (data.error != null) {
+                        mostrarSnackbar(
+                                "warning",
+                                data.error + ''
+                                );
+                        item.estatus = item.estatus === true ? false : true;
+                        return;
+                    }
+                }
+            } catch (error) {
+                mostrarSnackbar("error");
+                console.error(error);
+            } finally {
+                swal.close();
+            }
+        }
+
+
+        function fnSeleccionar(item) {
+            nombreProducto.value = item.nombreProducto;
+            descripcionProducto.value = item.descripcion;
+            cantidadProducto.value = item.cantidadInventario;
+        }
+
+        async function fnGuardar() {
+            this.$validator.validate().then(async (esValido) => {
+                if (esValido) {
+                    try {
+                        preloader("../");
+                        let datos = {
+                            nombreProducto: nombreProducto.value,
+                            descripcion: descripcionProducto.value,
+                            cantidadInventario: 0,
+                            estatus: 1};
+                        let datosU = {
+                            idUsuario: user.idUsuario,
+                            rol: {
+                                idRol: user.rol.idRol,
+                                nombreRol: rol
+                            }
+                        };
+                        let parametros = new URLSearchParams({datosProducto: JSON.stringify(datos), datosUsuario: JSON.stringify(datosU)});
+                        let {data, status} = await axios.post(ctr + "guardar", parametros);
+                        if (data.exception != null) {
+                            aviso('Datos del producto guardados correctamente.');
+
+                            fnLimpiarCampos(this);
+                            return;
+                        }
+                        if (data.error != null) {
+                            aviso(data.error + '');
+                            return;
+                        } else {
+                            fnConsultarTabla();
+                            fnLimpiarCampos(this);
+                            aviso('Datos del producto guardados correctamente.');
+                        }
+                    } catch (error) {
+                        mostrarSnackbar("error");
+                        console.error(error);
+                    } finally {
+                        //swal.close();
+                    }
+                }
+            });
+        }
+
+        async function fnEditarCantidad() {
+            this.$validator.validate().then(async (esValido) => {
+                if (esValido) {
+                    if (cantidadProducto.value > itemEditar.value.cantidadInventario) {
+                        try {
+                            preloader("../");
+                            let datos = {idProducto: itemEditar.value.idProducto,
+                                cantidadInventario: cantidadProducto.value};
+                            let datosU = {
+                                idUsuario: user.idUsuario,
+                                rol: {
+                                    idRol: user.rol.idRol,
+                                    nombreRol: rol
+                                }
+                            };
+                            let parametros = new URLSearchParams({datosProducto: JSON.stringify(datos), datosUsuario: JSON.stringify(datosU)});
+                            let {data, status} = await axios.post(ctr + "editarCantidad", parametros);
+                            if (data.exception != null) {
+                                mostrarSnackbar('error');
+                                return;
+                            }
+                            if (data.error != null) {
+                                mostrarSnackbar('warning', data.error + '');
+                                return;
+                            } else {
+                                mostrarSnackbar('success', 'Cantidad actualizada correctamente.');
+                                fnConsultarTabla();
+                                fnLimpiarCampos(this);
+                            }
+                        } catch (error) {
+                            mostrarSnackbar("error");
+                            console.error(error);
+                        } finally {
+                            swal.close();
+                        }
+                    } else {
+                        aviso("No puedes disminuir la cantidad");
+                    }
+                }
+            });
+        }
+
+
+
+        function fnLimpiarCampos(cx) {
+            //cx = contexto
+            nombreProducto.value = "";
+            descripcionProducto.value = "";
+
+            flagEditar.value = false;
+            itemEditar.value = {};
+
+            if (this == undefined)
+                cx.$validator.reset();
+            else
+                this.$validator.reset();
+        }
+
+        function mostrarSnackbar(color, texto) {
+            snackbar.value = true;
+            color_snackbar.value = color;
+            if (color == "error")
+                mensaje_snackbar.value =
+                        "Ocurrió un error. Intentalo de nuevo más tarde.";
+            else
+                mensaje_snackbar.value = texto;
+        }
+
+        return {
+            nombreProducto,
+            descripcionProducto,
+            cantidadProducto,
+            dialog,
+            color_snackbar,
+            snackbar,
+            mensaje_snackbar,
+            loader,
+            mostrarSnackbar,
+            flagEditar,
+            headerCapacitacion,
+            searchCapacitacion,
+            fnConsultarTabla,
+            fnCambiarEstatus,
+            dataProducto,
+            fnLimpiarCampos,
+            fnSeleccionar,
+            fnEditarCantidad,
+            itemEditar,
+            fnGuardar
+        };
+    }
+});
+
+Vue.config.devtools = true;
+    </script>
+
+</html>
